@@ -231,11 +231,28 @@ a { color: inherit; }
 :focus-visible { outline: 2px solid var(--dorado-600); outline-offset: 2px; }
 
 /* ---------- Responsivo ---------- */
+
+/* Tablets y celulares (hasta 780px) */
 @media (max-width: 780px) {
-  .hero { grid-template-columns: 1fr; }
-  .hero__vitrina { font-size: 6rem; }
+  /* Hero: se mantiene texto a la izquierda y círculo a la derecha, como en PC.
+     El círculo se encoge según el ancho de la pantalla (34vw = 34% del ancho),
+     nunca menos de 110px ni más de 240px. */
+  .hero { grid-template-columns: 1fr clamp(110px, 34vw, 240px); gap: 16px; }
+  .hero__vitrina { border-width: 3px; }
+
   .buscador { width: 160px; }
   .panel-carrito { width: 90%; right: -100%; }
+
+  /* Categorías: siempre en UNA sola línea; si no caben, se deslizan con el dedo */
+  .nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    scrollbar-width: none;                 /* Firefox */
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav::-webkit-scrollbar { display: none; } /* Chrome / Safari */
+  .nav__link { white-space: nowrap; flex-shrink: 0; }
 }
 
 /* Pantallas muy pequeñas (celulares angostos) */
@@ -243,13 +260,15 @@ a { color: inherit; }
   .header__inner { padding: 12px 16px; gap: 12px; }
   .header__acciones { width: 100%; order: 3; }
   .buscador-caja { flex: 1; }
-  .buscador { width: 100%; }                 /* ya no se comprime a 160px fijos */
+  .buscador { width: 100%; }
   .nav { order: 2; width: 100%; gap: 4px; }
   .nav__link { font-size: 0.82rem; padding: 6px 8px; }
 
-  .hero { padding: 32px 16px; }
-  .hero__vitrina { font-size: 4.5rem; }
-  .hero h1 { font-size: 1.8rem; }
+  .hero { padding: 28px 16px; gap: 12px; }
+  .hero h1 { font-size: 1.5rem; }
+  .hero__eyebrow { font-size: 0.85rem; }
+  .hero__desc { font-size: 0.88rem; }
+  .hero .btn--primario { padding: 9px 16px; font-size: 0.88rem; }
 
   .grid-productos { grid-template-columns: 1fr 1fr; gap: 12px; }
   .tarjeta { padding: 12px; }
