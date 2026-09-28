@@ -104,7 +104,7 @@ class Zapato {
   // el mensaje con el LINK de la foto (solo funciona cuando la página está
   // publicada en internet; abierta desde tu PC no hay link público).
   enlaceConsulta() {
-    let mensaje = `Hola Golden Step, quiero consultar el precio de este calzado: ${this.nombre}.`;
+    let mensaje = `Hola, quiero consultar el precio de este calzado: ${this.nombre}.`;
     if (this.imagen && window.location.protocol.startsWith('http')) {
       const urlFoto = new URL(this.imagen, window.location.href).href;
       mensaje += `\nFoto: ${urlFoto}`;
@@ -565,7 +565,7 @@ document.getElementById('modal-cuerpo').addEventListener('click', (evento) => {
 /* =========================================================================
    TEMPORIZADOR: mensajes rotativos del hero (setInterval)
    ========================================================================= */
-const mensajesHero = ['Precios comodos', 'Envío gratis', 'Elige tu estilo'];
+const mensajesHero = ['Precios comodos', 'Envío gratis', 'Elige tu favorito'];
 let indiceMensaje = 0;
 setInterval(() => {
   indiceMensaje = (indiceMensaje + 1) % mensajesHero.length; // 2) operador módulo
