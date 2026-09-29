@@ -37,25 +37,33 @@
     color: var(--crema-050);
     padding: 20px;
     text-align: center;
+    position: relative;
   }
   header h1 { font-size: 1.4rem; }
   header h1 span { color: var(--dorado-400); }
   header p { margin: 4px 0 0; color: #d8c8b0; font-size: 0.88rem; }
+  #btn-salir {
+    position: absolute; top: 16px; right: 16px; display: none;
+    background: transparent; border: 1px solid var(--dorado-400); color: var(--dorado-400);
+    padding: 6px 12px; border-radius: var(--radio); font-size: 0.8rem; cursor: pointer;
+  }
 
   main { max-width: 480px; margin: 0 auto; padding: 20px 16px; }
 
-  /* --- Candado de acceso simple --- */
-  #candado { text-align: center; padding: 40px 16px; }
-  #candado input {
-    width: 100%; padding: 14px; font-size: 1.1rem; text-align: center;
-    border: 1px solid var(--linea); border-radius: var(--radio); margin: 16px 0;
-    letter-spacing: 0.1em;
+  /* --- Inicio de sesión --- */
+  #login-caja { text-align: center; padding: 40px 16px; max-width: 380px; margin: 0 auto; }
+  #login-caja input {
+    width: 100%; padding: 14px; font-size: 1rem;
+    border: 1px solid var(--linea); border-radius: var(--radio); margin: 8px 0;
+    background: var(--crema-100); font-family: var(--fuente-texto);
   }
-  #candado button {
+  #login-caja button {
     width: 100%; padding: 14px; border: none; border-radius: var(--radio);
-    background: var(--cuero-950); color: var(--crema-050); font-size: 1rem; cursor: pointer;
+    background: var(--cuero-950); color: var(--crema-050); font-size: 1rem; cursor: pointer; margin-top: 8px;
   }
-  #candado p.error { color: var(--peligro); font-size: 0.9rem; min-height: 1.2em; }
+  #login-caja button:disabled { background: #c9beae; cursor: not-allowed; }
+  #login-caja p.error { color: var(--peligro); font-size: 0.9rem; min-height: 1.2em; }
+  #login-caja label { display: block; text-align: left; font-weight: 600; font-size: 0.88rem; margin-top: 12px; }
 
   #contenido { display: none; }
 
@@ -76,7 +84,6 @@
     cursor: pointer; background: var(--crema-100); font-size: 0.88rem;
   }
   .categorias input { display: none; }
-  .categorias input:checked + span { font-weight: 700; }
   .categorias label:has(input:checked) { background: var(--cuero-950); color: var(--crema-050); border-color: var(--cuero-950); }
 
   .foto-caja {
@@ -126,17 +133,23 @@
   <header>
     <h1>Golden<span>Step</span> · Panel de calzados</h1>
     <p>Aquí agregas los calzados que aparecen en la tienda</p>
+    <button id="btn-salir">Cerrar sesión</button>
   </header>
 
-  <!-- Candado simple: SOLO para evitar que cualquiera que encuentre este
-       enlace toque el catálogo por accidente. No es seguridad real, es un
-       filtro básico. -->
-  <div id="candado">
-    <h2>Acceso al panel</h2>
-    <p>Escribe el código para continuar</p>
-    <input type="text" id="clave" placeholder="Código" inputmode="numeric">
+  <!-- Inicio de sesión real con Firebase Authentication. Solo alguien con
+       este correo y contraseña puede agregar o borrar calzados. -->
+  <div id="login-caja">
+    <h2>Iniciar sesión</h2>
+    <p>Ingresa con la cuenta del administrador</p>
+
+    <label for="correo">Correo</label>
+    <input type="email" id="correo" placeholder="tucorreo@ejemplo.com" autocomplete="username">
+
+    <label for="clave-login">Contraseña</label>
+    <input type="password" id="clave-login" placeholder="Contraseña" autocomplete="current-password">
+
     <button id="btn-entrar">Entrar</button>
-    <p class="error" id="error-clave"></p>
+    <p class="error" id="error-login"></p>
   </div>
 
   <div id="contenido">
@@ -191,6 +204,7 @@
   <!-- Firebase (misma base de datos que usa la tienda) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <script>
     'use strict';
@@ -206,33 +220,63 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
     /* ===== Datos de Cloudinary (donde se guardan las fotos) ===== */
     const CLOUDINARY_CLOUD_NAME = 'm4qjgcap';
     const CLOUDINARY_UPLOAD_PRESET = 'golden_step';
 
-    /* ===== Código de acceso simple =====
-       Cámbialo por el que quieras. No es seguridad real (cualquiera que
-       vea el código fuente de la página puede encontrarlo), solo evita
-       que alguien entre por accidente o casualidad. */
-    const CODIGO_ACCESO = '2026';
-
-    const candado = document.getElementById('candado');
+    /* =========================================================================
+       INICIO DE SESIÓN
+       -------------------------------------------------------------------------
+       Solo el usuario creado en Firebase Authentication (correo + contraseña)
+       puede entrar. Una vez que inicia sesión en este navegador, Firebase lo
+       recuerda automáticamente hasta que haga clic en "Cerrar sesión".
+       ========================================================================= */
+    const loginCaja = document.getElementById('login-caja');
     const contenido = document.getElementById('contenido');
-    const inputClave = document.getElementById('clave');
-    const errorClave = document.getElementById('error-clave');
+    const btnSalir = document.getElementById('btn-salir');
+    const errorLogin = document.getElementById('error-login');
 
-    function intentarEntrar() {
-      if (inputClave.value.trim() === CODIGO_ACCESO) {
-        candado.style.display = 'none';
+    // Se ejecuta automáticamente cada vez que cambia el estado de sesión
+    // (al cargar la página, al iniciar sesión y al cerrarla).
+    auth.onAuthStateChanged((usuario) => {
+      if (usuario) {
+        loginCaja.style.display = 'none';
         contenido.style.display = 'block';
+        btnSalir.style.display = 'inline-block';
         cargarListaProductos();
       } else {
-        errorClave.textContent = 'Código incorrecto, inténtalo de nuevo.';
+        loginCaja.style.display = 'block';
+        contenido.style.display = 'none';
+        btnSalir.style.display = 'none';
       }
-    }
-    document.getElementById('btn-entrar').addEventListener('click', intentarEntrar);
-    inputClave.addEventListener('keydown', (e) => { if (e.key === 'Enter') intentarEntrar(); });
+    });
+
+    document.getElementById('btn-entrar').addEventListener('click', async () => {
+      const correo = document.getElementById('correo').value.trim();
+      const clave = document.getElementById('clave-login').value;
+      errorLogin.textContent = '';
+
+      if (!correo || !clave) {
+        errorLogin.textContent = 'Completa correo y contraseña.';
+        return;
+      }
+
+      try {
+        await auth.signInWithEmailAndPassword(correo, clave);
+      } catch (error) {
+        console.error(error);
+        errorLogin.textContent = 'Correo o contraseña incorrectos.';
+      }
+    });
+
+    // Permite iniciar sesión con la tecla Enter
+    document.getElementById('clave-login').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-entrar').click();
+    });
+
+    btnSalir.addEventListener('click', () => auth.signOut());
 
     /* ===== Vista previa de la foto elegida ===== */
     const inputFoto = document.getElementById('foto');
