@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Step | Agregar calzado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cuero-950: #23150e;
+    --dorado-600: #b8863b;
+    --dorado-400: #d7ac6b;
+    --crema-100: #f6efe2;
+    --crema-050: #fbf7ee;
+    --texto: #241a12;
+    --linea: rgba(35, 21, 14, 0.14);
+    --exito: #4c7a4c;
+    --peligro: #a4402f;
+    --fuente-display: "Fraunces", serif;
+    --fuente-texto: "Work Sans", sans-serif;
+    --radio: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--crema-050);
+    color: var(--texto);
+    font-family: var(--fuente-texto);
+    line-height: 1.5;
+    padding-bottom: 40px;
+  }
+  h1, h2 { font-family: var(--fuente-display); margin: 0 0 4px; }
+
+  header {
+    background: var(--cuero-950);
+    color: var(--crema-050);
+    padding: 20px;
+    text-align: center;
+  }
+  header h1 { font-size: 1.4rem; }
+  header h1 span { color: var(--dorado-400); }
+  header p { margin: 4px 0 0; color: #d8c8b0; font-size: 0.88rem; }
+
+  main { max-width: 480px; margin: 0 auto; padding: 20px 16px; }
+
+  /* --- Candado de acceso simple --- */
+  #candado { text-align: center; padding: 40px 16px; }
+  #candado input {
+    width: 100%; padding: 14px; font-size: 1.1rem; text-align: center;
+    border: 1px solid var(--linea); border-radius: var(--radio); margin: 16px 0;
+    letter-spacing: 0.1em;
+  }
+  #candado button {
+    width: 100%; padding: 14px; border: none; border-radius: var(--radio);
+    background: var(--cuero-950); color: var(--crema-050); font-size: 1rem; cursor: pointer;
+  }
+  #candado p.error { color: var(--peligro); font-size: 0.9rem; min-height: 1.2em; }
+
+  #contenido { display: none; }
+
+  .tarjeta-form {
+    background: #fff; border: 1px solid var(--linea); border-radius: var(--radio);
+    padding: 20px; margin-bottom: 24px;
+  }
+  label { display: block; font-weight: 600; margin: 16px 0 6px; font-size: 0.92rem; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="number"], select {
+    width: 100%; padding: 12px; border: 1px solid var(--linea); border-radius: var(--radio);
+    font-family: var(--fuente-texto); font-size: 1rem; background: var(--crema-100);
+  }
+  .categorias { display: flex; gap: 8px; flex-wrap: wrap; }
+  .categorias label {
+    flex: 1; min-width: 90px; text-align: center; margin: 0; font-weight: 500;
+    border: 1px solid var(--linea); border-radius: var(--radio); padding: 10px 6px;
+    cursor: pointer; background: var(--crema-100); font-size: 0.88rem;
+  }
+  .categorias input { display: none; }
+  .categorias input:checked + span { font-weight: 700; }
+  .categorias label:has(input:checked) { background: var(--cuero-950); color: var(--crema-050); border-color: var(--cuero-950); }
+
+  .foto-caja {
+    border: 2px dashed var(--linea); border-radius: var(--radio);
+    text-align: center; padding: 20px; margin-top: 6px; background: var(--crema-100);
+  }
+  .foto-caja input { display: none; }
+  .foto-caja label {
+    display: inline-block; margin: 0; padding: 10px 18px; background: var(--cuero-950);
+    color: var(--crema-050); border-radius: var(--radio); cursor: pointer; font-size: 0.9rem;
+  }
+  #vista-previa { margin-top: 14px; max-width: 100%; max-height: 220px; border-radius: var(--radio); display: none; }
+
+  small { color: #6b5945; font-size: 0.8rem; }
+
+  #btn-guardar {
+    width: 100%; margin-top: 22px; padding: 14px; border: none; border-radius: var(--radio);
+    background: var(--dorado-600); color: var(--cuero-950); font-weight: 700; font-size: 1rem; cursor: pointer;
+  }
+  #btn-guardar:disabled { background: #c9beae; cursor: not-allowed; }
+
+  #mensaje { text-align: center; font-size: 0.92rem; min-height: 1.4em; margin-top: 10px; }
+  #mensaje.exito { color: var(--exito); }
+  #mensaje.error { color: var(--peligro); }
+
+  .lista-productos { display: flex; flex-direction: column; gap: 10px; }
+  .item-lista {
+    display: flex; align-items: center; gap: 12px; background: #fff;
+    border: 1px solid var(--linea); border-radius: var(--radio); padding: 10px;
+  }
+  .item-lista img, .item-lista .emoji-fallback {
+    width: 52px; height: 52px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
+    background: var(--crema-100); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+  }
+  .item-lista__info { flex: 1; min-width: 0; }
+  .item-lista__nombre { font-weight: 600; font-size: 0.94rem; margin: 0; }
+  .item-lista__detalle { font-size: 0.82rem; color: #6b5945; margin: 2px 0 0; }
+  .item-lista button {
+    border: none; background: transparent; color: var(--peligro); font-size: 0.85rem;
+    cursor: pointer; padding: 6px 8px;
+  }
+  .vacio-lista { text-align: center; color: #6b5945; font-size: 0.9rem; padding: 20px 0; }
+</style>
+</head>
+<body>
+
+  <header>
+    <h1>Golden<span>Step</span> · Panel de calzados</h1>
+    <p>Aquí agregas los calzados que aparecen en la tienda</p>
+  </header>
+
+  <!-- Candado simple: SOLO para evitar que cualquiera que encuentre este
+       enlace toque el catálogo por accidente. No es seguridad real, es un
+       filtro básico. -->
+  <div id="candado">
+    <h2>Acceso al panel</h2>
+    <p>Escribe el código para continuar</p>
+    <input type="text" id="clave" placeholder="Código" inputmode="numeric">
+    <button id="btn-entrar">Entrar</button>
+    <p class="error" id="error-clave"></p>
+  </div>
+
+  <div id="contenido">
+    <main>
+
+      <section class="tarjeta-form">
+        <h2>Agregar calzado</h2>
+        <form id="form-producto">
+          <label for="nombre">Nombre del calzado</label>
+          <input type="text" id="nombre" placeholder="Ej. Runner Aurora" required>
+
+          <label>Categoría</label>
+          <div class="categorias">
+            <label><input type="radio" name="categoria" value="deportivo" checked><span>⚡ Deportivo</span></label>
+            <label><input type="radio" name="categoria" value="casual"><span>✨ Casual</span></label>
+            <label><input type="radio" name="categoria" value="bota"><span>🥾 Bota</span></label>
+          </div>
+
+          <label for="precio">Precio (S/)</label>
+          <input type="number" id="precio" placeholder="Ej. 189.90" min="0" step="0.10" required>
+
+          <label for="stock">Cantidad disponible</label>
+          <input type="number" id="stock" placeholder="Ej. 8" min="0" step="1" required>
+
+          <label for="etiquetas">Palabras para el buscador (opcional)</label>
+          <input type="text" id="etiquetas" placeholder="Ej. futbol, correr, gimnasio">
+          <small>Sepáralas con comas. Ayudan a que el cliente lo encuentre al buscar.</small>
+
+          <label>Foto del calzado</label>
+          <div class="foto-caja">
+            <input type="file" id="foto" accept="image/*" required>
+            <label for="foto">📷 Elegir foto</label>
+            <br>
+            <img id="vista-previa" alt="Vista previa">
+          </div>
+
+          <button type="submit" id="btn-guardar">Guardar calzado</button>
+          <p id="mensaje"></p>
+        </form>
+      </section>
+
+      <section>
+        <h2>Calzados ya agregados</h2>
+        <div class="lista-productos" id="lista-productos">
+          <p class="vacio-lista">Cargando...</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Firebase (misma base de datos que usa la tienda) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script>
+    'use strict';
+
+    /* ===== Mismos datos que script.js: deben apuntar al mismo proyecto ===== */
+    const firebaseConfig = {
+      apiKey: "AIzaSyDbD9PUTBhx3qsC8rFYPUDhnNxzfzq4-eI",
+      authDomain: "golden-step-74bcb.firebaseapp.com",
+      projectId: "golden-step-74bcb",
+      storageBucket: "golden-step-74bcb.firebasestorage.app",
+      messagingSenderId: "267074238737",
+      appId: "1:267074238737:web:cdbf19e03a167bf29534b0"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    /* ===== Datos de Cloudinary (donde se guardan las fotos) ===== */
+    const CLOUDINARY_CLOUD_NAME = 'm4qjgcap';
+    const CLOUDINARY_UPLOAD_PRESET = 'golden_step';
+
+    /* ===== Código de acceso simple =====
+       Cámbialo por el que quieras. No es seguridad real (cualquiera que
+       vea el código fuente de la página puede encontrarlo), solo evita
+       que alguien entre por accidente o casualidad. */
+    const CODIGO_ACCESO = '2026';
+
+    const candado = document.getElementById('candado');
+    const contenido = document.getElementById('contenido');
+    const inputClave = document.getElementById('clave');
+    const errorClave = document.getElementById('error-clave');
+
+    function intentarEntrar() {
+      if (inputClave.value.trim() === CODIGO_ACCESO) {
+        candado.style.display = 'none';
+        contenido.style.display = 'block';
+        cargarListaProductos();
+      } else {
+        errorClave.textContent = 'Código incorrecto, inténtalo de nuevo.';
+      }
+    }
+    document.getElementById('btn-entrar').addEventListener('click', intentarEntrar);
+    inputClave.addEventListener('keydown', (e) => { if (e.key === 'Enter') intentarEntrar(); });
+
+    /* ===== Vista previa de la foto elegida ===== */
+    const inputFoto = document.getElementById('foto');
+    const vistaPrevia = document.getElementById('vista-previa');
+    inputFoto.addEventListener('change', () => {
+      const archivo = inputFoto.files[0];
+      if (!archivo) { vistaPrevia.style.display = 'none'; return; }
+      vistaPrevia.src = URL.createObjectURL(archivo);
+      vistaPrevia.style.display = 'block';
+    });
+
+    /* ===== Subir la foto a Cloudinary y devolver su URL ===== */
+    async function subirFotoACloudinary(archivo) {
+      const datos = new FormData();
+      datos.append('file', archivo);
+      datos.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      const respuesta = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: datos
+      });
+      if (!respuesta.ok) throw new Error('No se pudo subir la foto');
+      const json = await respuesta.json();
+      return json.secure_url;
+    }
+
+    /* ===== Guardar el formulario ===== */
+    const form = document.getElementById('form-producto');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const mensaje = document.getElementById('mensaje');
+
+    form.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+
+      const nombre = document.getElementById('nombre').value.trim();
+      const categoria = form.querySelector('input[name="categoria"]:checked').value;
+      const precio = parseFloat(document.getElementById('precio').value);
+      const stock = parseInt(document.getElementById('stock').value, 10);
+      const etiquetasTexto = document.getElementById('etiquetas').value.trim();
+      const etiquetas = etiquetasTexto
+        ? etiquetasTexto.split(',').map(t => t.trim()).filter(Boolean)
+        : [];
+      const archivoFoto = inputFoto.files[0];
+
+      if (!nombre || !archivoFoto || Number.isNaN(precio) || Number.isNaN(stock)) {
+        mensaje.textContent = 'Completa todos los campos obligatorios.';
+        mensaje.className = 'error';
+        return;
+      }
+
+      btnGuardar.disabled = true;
+      mensaje.textContent = 'Subiendo foto...';
+      mensaje.className = '';
+
+      try {
+        const urlFoto = await subirFotoACloudinary(archivoFoto);
+
+        mensaje.textContent = 'Guardando calzado...';
+        await db.collection('productos').add({
+          nombre,
+          categoria,
+          precio,
+          stock,
+          etiquetas,
+          imagen: urlFoto,
+          creado: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        mensaje.textContent = `"${nombre}" se agregó correctamente ✅`;
+        mensaje.className = 'exito';
+        form.reset();
+        vistaPrevia.style.display = 'none';
+        document.querySelector('.categorias input[value="deportivo"]').checked = true;
+        cargarListaProductos();
+      } catch (error) {
+        console.error(error);
+        mensaje.textContent = 'Ocurrió un error al guardar. Revisa tu conexión e inténtalo de nuevo.';
+        mensaje.className = 'error';
+      } finally {
+        btnGuardar.disabled = false;
+      }
+    });
+
+    /* ===== Lista de productos ya agregados, con opción de borrar ===== */
+    const NOMBRE_CATEGORIA = { deportivo: 'Deportivo', casual: 'Casual', bota: 'Bota' };
+    const EMOJI_CATEGORIA = { deportivo: '👟', casual: '👞', bota: '🥾' };
+
+    async function cargarListaProductos() {
+      const contenedor = document.getElementById('lista-productos');
+      contenedor.innerHTML = '<p class="vacio-lista">Cargando...</p>';
+
+      try {
+        const snapshot = await db.collection('productos').orderBy('creado', 'desc').get();
+        if (snapshot.empty) {
+          contenedor.innerHTML = '<p class="vacio-lista">Todavía no agregaste ningún calzado.</p>';
+          return;
+        }
+
+        contenedor.innerHTML = '';
+        snapshot.forEach(doc => {
+          const p = doc.data();
+          const fila = document.createElement('div');
+          fila.className = 'item-lista';
+          fila.innerHTML = `
+            ${p.imagen
+              ? `<img src="${p.imagen}" alt="${p.nombre}">`
+              : `<div class="emoji-fallback">${EMOJI_CATEGORIA[p.categoria] || '👟'}</div>`}
+            <div class="item-lista__info">
+              <p class="item-lista__nombre">${p.nombre}</p>
+              <p class="item-lista__detalle">${NOMBRE_CATEGORIA[p.categoria] || p.categoria} · S/ ${Number(p.precio).toFixed(2)} · Stock: ${p.stock}</p>
+            </div>
+            <button data-id="${doc.id}" data-nombre="${p.nombre}">Eliminar</button>
+          `;
+          contenedor.appendChild(fila);
+        });
+      } catch (error) {
+        console.error(error);
+        contenedor.innerHTML = '<p class="vacio-lista">No se pudo cargar la lista.</p>';
+      }
+    }
+
+    document.getElementById('lista-productos').addEventListener('click', async (evento) => {
+      const boton = evento.target.closest('button[data-id]');
+      if (!boton) return;
+
+      const confirmar = confirm(`¿Eliminar "${boton.dataset.nombre}" del catálogo?`);
+      if (!confirmar) return;
+
+      try {
+        await db.collection('productos').doc(boton.dataset.id).delete();
+        cargarListaProductos();
+      } catch (error) {
+        console.error(error);
+        alert('No se pudo eliminar. Revisa tu conexión e inténtalo de nuevo.');
+      }
+    });
+  </script>
+</body>
+</html>

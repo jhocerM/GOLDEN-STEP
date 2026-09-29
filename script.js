@@ -16,9 +16,32 @@
     10. Interactividad y funcionalidad ...... todo el flujo del carrito
     11. Trabajo en equipo y proactividad .... completar en el informe .doc
     12. Diseño y maquetado coherente ........ index.html + styles.css
+
+   NOVEDAD: el catálogo YA NO es una lista fija escrita aquí. Se carga desde
+   Firestore (ver sección "CONEXIÓN CON FIREBASE"), para que el dueño de la
+   tienda pueda agregar calzados desde admin.html sin tocar código.
    ========================================================================= */
 
 'use strict';
+
+/* =========================================================================
+   CONEXIÓN CON FIREBASE
+   -------------------------------------------------------------------------
+   Estos datos NO son secretos: identifican tu proyecto de Firebase, igual
+   que la dirección de una tienda. Deben ser EXACTAMENTE los mismos datos
+   que usa admin.html, porque ambos leen y escriben en la misma base de
+   datos (colección "productos").
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDbD9PUTBhx3qsC8rFYPUDhnNxzfzq4-eI",
+  authDomain: "golden-step-74bcb.firebaseapp.com",
+  projectId: "golden-step-74bcb",
+  storageBucket: "golden-step-74bcb.firebasestorage.app",
+  messagingSenderId: "267074238737",
+  appId: "1:267074238737:web:cdbf19e03a167bf29534b0"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 /* =========================================================================
    1) VALORES, TIPOS Y OPERADORES
@@ -49,19 +72,18 @@ function esNumeroValido(valor) {
 
 /* =========================================================================
    4) DATOS: PRODUCTOS (array de objetos)
+   -------------------------------------------------------------------------
+   "productos" y "catalogo" empiezan vacíos y se llenan cuando llega la
+   respuesta de Firestore (función cargarProductosDesdeFirestore, más abajo).
+   Por eso ahora son "let" en vez de "const": su contenido cambia una vez,
+   al terminar de cargar.
    ========================================================================= */
-// "imagen" es la ruta al archivo real (carpeta imagenes/). Si el archivo no
-// existe o no carga, el <img> se reemplaza solo por el emoji de respaldo.
-const productos = [
-  { id: 1, nombre: 'Runner Aurora',   categoria: 'deportivo', precio: 189.9, stock: 8,  emoji: '👟', imagen: 'imagenes/3.avif' },
-  { id: 2, nombre: 'Oxford Clásico',  categoria: 'casual',    precio: 219.0, stock: 5,  emoji: '👞', imagen: 'imagenes/3.jpeg' },
-  { id: 3, nombre: 'Trailblazer',     categoria: 'bota',      precio: 259.5, stock: 3,  emoji: '🥾', imagen: 'imagenes/5.jpeg' },
-  { id: 4, nombre: 'Urban Step',      categoria: 'casual',    precio: 159.9, stock: 12, emoji: '👞', imagen: 'imagenes/6.jpeg' },
-  { id: 5, nombre: 'Sprint Gold',     categoria: 'deportivo', precio: 199.9, stock: 0,  emoji: '👟', imagen: 'imagenes/7.jpeg' },
-  { id: 6, nombre: 'Andes Boot',      categoria: 'bota',      precio: 289.0, stock: 4,  emoji: '🥾', imagen: 'imagenes/9.jpeg' },
-  { id: 7, nombre: 'Loafer Dorado',   categoria: 'casual',    precio: 229.9, stock: 6,  emoji: '👞', imagen: 'imagenes/12.jpeg' },
-  { id: 8, nombre: 'Sky Runner',      categoria: 'deportivo', precio: 179.9, stock: 9,  emoji: '👟', imagen: 'imagenes/444.jpeg' },
-];
+let productos = [];
+let catalogo = [];
+
+// Emoji de respaldo según la categoría, por si un producto no tiene foto
+// o la foto no llegó a cargar (ver Zapato.renderMiniatura más abajo).
+const EMOJI_POR_CATEGORIA = { deportivo: '👟', casual: '👞', bota: '🥾' };
 
 /* =========================================================================
    6) PROTOTIPOS Y CLASES  /  7) POLIMORFISMO
@@ -72,14 +94,15 @@ const productos = [
    polimorfismo.
    ========================================================================= */
 class Zapato {
-  constructor({ id, nombre, categoria, precio, stock, emoji, imagen }) {
+  constructor({ id, nombre, categoria, precio, stock, emoji, imagen, etiquetas = [] }) {
     this.id = id;
     this.nombre = nombre;
     this.categoria = categoria;
     this.precio = precio;
     this.stock = stock;
     this.emoji = emoji;
-    this.imagen = imagen; // ruta a la foto real (opcional)
+    this.imagen = imagen; // ruta o URL a la foto real (opcional)
+    this.etiquetas = etiquetas; // palabras clave para el buscador (ej. "futbol", "casual")
   }
 
   // Genera el HTML de la miniatura: <img> si hay foto; si la foto no carga,
@@ -104,7 +127,7 @@ class Zapato {
   // el mensaje con el LINK de la foto (solo funciona cuando la página está
   // publicada en internet; abierta desde tu PC no hay link público).
   enlaceConsulta() {
-    let mensaje = `Hola, quiero consultar el precio de este calzado: ${this.nombre}.`;
+    let mensaje = `Hola Golden Step, quiero consultar el precio de este calzado: ${this.nombre}.`;
     if (this.imagen && window.location.protocol.startsWith('http')) {
       const urlFoto = new URL(this.imagen, window.location.href).href;
       mensaje += `\nFoto: ${urlFoto}`;
@@ -132,22 +155,45 @@ class ZapatoBota extends Zapato {
 
 // Fábrica: decide qué subclase instanciar según la categoría (más POO)
 function crearZapato(datos) {
-  switch (datos.categoria) {                       // 2) estructura de control: switch
-    case 'deportivo': return new ZapatoDeportivo(datos);
-    case 'casual':    return new ZapatoCasual(datos);
-    case 'bota':       return new ZapatoBota(datos);
-    default:           return new Zapato(datos);
+  // Si el producto no trae emoji propio (por ejemplo, los agregados desde
+  // admin.html), se le asigna uno por defecto según su categoría.
+  const datosConDefecto = { ...datos, emoji: datos.emoji || EMOJI_POR_CATEGORIA[datos.categoria] || '👟' };
+
+  switch (datosConDefecto.categoria) {                       // 2) estructura de control: switch
+    case 'deportivo': return new ZapatoDeportivo(datosConDefecto);
+    case 'casual':    return new ZapatoCasual(datosConDefecto);
+    case 'bota':       return new ZapatoBota(datosConDefecto);
+    default:           return new Zapato(datosConDefecto);
   }
 }
 
-const catalogo = productos.map(crearZapato); // array de instancias polimórficas
+/* =========================================================================
+   CARGA DE PRODUCTOS DESDE FIRESTORE
+   -------------------------------------------------------------------------
+   Reemplaza a la antigua lista fija de productos. admin.html guarda cada
+   calzado nuevo en la colección "productos" de Firestore; esta función lo
+   lee y arma el catálogo con las mismas clases (Zapato, ZapatoDeportivo...)
+   que usa el resto del código.
+   ========================================================================= */
+async function cargarProductosDesdeFirestore() {
+  try {
+    const snapshot = await db.collection('productos').orderBy('creado', 'desc').get();
+    productos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    catalogo = productos.map(crearZapato); // array de instancias polimórficas
 
-// Demostración de la cadena de prototipos (revisar en consola del navegador)
-console.log(
-  'Prototipo de catalogo[0]:',
-  Object.getPrototypeOf(catalogo[0]) === ZapatoDeportivo.prototype
-);
-catalogo.forEach(z => console.log(z.nombre, '->', z.obtenerEtiqueta())); // polimorfismo en acción
+    // Demostración de la cadena de prototipos (revisar en consola del navegador)
+    if (catalogo.length > 0) {
+      console.log(
+        'Prototipo de catalogo[0]:',
+        Object.getPrototypeOf(catalogo[0]) === ZapatoDeportivo.prototype
+      );
+      catalogo.forEach(z => console.log(z.nombre, '->', z.obtenerEtiqueta())); // polimorfismo en acción
+    }
+  } catch (error) {
+    console.error('No se pudo cargar el catálogo desde Firestore:', error);
+    mostrarToast('No se pudo cargar el catálogo. Revisa tu conexión a internet.', 'error');
+  }
+}
 
 /* =========================================================================
    5) ENCAPSULAMIENTO Y MÉTODOS
@@ -160,7 +206,7 @@ catalogo.forEach(z => console.log(z.nombre, '->', z.obtenerEtiqueta())); // poli
    ------------------------------------------------------------------------
    #items es un Map<idProducto, cantidad>. Un Map, a diferencia de un
    objeto plano, mantiene el orden de inserción y permite cualquier tipo
-   de clave.
+   de clave (aquí usamos el id de Firestore, que es un texto).
    ========================================================================= */
 class Carrito {
   #items = new Map(); // Map privado: id del zapato -> cantidad
@@ -286,10 +332,26 @@ const contadorCarrito  = document.getElementById('contador-carrito');
 
 let categoriaActiva = 'todos';
 
+// Quita tildes y mayúsculas: "Fútbol" -> "futbol", para que el buscador
+// encuentre resultados sin importar cómo se escriba.
+const normalizar = (texto) =>
+  texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
 function obtenerProductosFiltrados() {
+  const busqueda = normalizar(ultimaBusqueda.trim());
+
   return catalogo.filter(z => {
     const coincideCategoria = categoriaActiva === 'todos' || z.categoria === categoriaActiva;
-    const coincideBusqueda = z.nombre.toLowerCase().includes(ultimaBusqueda.toLowerCase());
+
+    // Textos contra los que se compara lo que escribe el usuario: nombre,
+    // categoría y las etiquetas que se le hayan puesto al producto
+    // (ej. "futbol", "dia a dia", "uso casual").
+    const terminos = [z.nombre, z.categoria, ...z.etiquetas].map(normalizar);
+
+    // Coincide si algún término contiene lo escrito ("run" -> "runner")
+    // o si lo escrito contiene el término ("para futbol" -> "futbol")
+    const coincideBusqueda = terminos.some(t => t.includes(busqueda) || busqueda.includes(t));
+
     return coincideCategoria && coincideBusqueda; // 1) operador lógico &&
   });
 }
@@ -297,6 +359,12 @@ function obtenerProductosFiltrados() {
 function renderCatalogo() {
   const lista = obtenerProductosFiltrados();
   gridProductos.innerHTML = '';
+
+  if (catalogo.length === 0) {
+    gridProductos.innerHTML = '<p class="vacio">Todavía no hay calzados en el catálogo.</p>';
+    resultadoInfo.textContent = '';
+    return;
+  }
 
   // 2) estructura de control: while (recorrido alternativo, además del forEach)
   let i = 0;
@@ -379,7 +447,10 @@ function mostrarToast(mensaje, tipo = 'info') {
    ========================================================================= */
 
 // --- Evento "load": se dispara cuando toda la página terminó de cargar ---
-window.addEventListener('load', () => {
+// Es "async" porque adentro esperamos (await) a que lleguen los productos
+// de Firestore antes de pintar el catálogo por primera vez.
+window.addEventListener('load', async () => {
+  await cargarProductosDesdeFirestore();
   document.getElementById('loader').classList.add('loader--oculto');
   mostrarToast(`Bienvenido a ${NOMBRE_TIENDA} 👋`);
   renderCatalogo();
@@ -459,7 +530,7 @@ gridProductos.addEventListener('click', (evento) => {
   const consultar = evento.target.closest('[data-accion="consultar"]');
   if (consultar) {
     evento.stopPropagation();
-    const zapatoConsulta = catalogo.find(z => z.id === Number(consultar.dataset.id));
+    const zapatoConsulta = catalogo.find(z => z.id === consultar.dataset.id);
     window.open(zapatoConsulta.enlaceConsulta(), '_blank', 'noopener');
     return;
   }
@@ -467,7 +538,7 @@ gridProductos.addEventListener('click', (evento) => {
   const boton = evento.target.closest('[data-accion="agregar"]');
   if (boton) {
     evento.stopPropagation(); // evita que el clic también "abra" la tarjeta
-    const id = Number(boton.dataset.id);
+    const id = boton.dataset.id;
     const zapato = catalogo.find(z => z.id === id);
     const agregado = carrito.agregar(zapato, 1);
 
@@ -485,7 +556,7 @@ gridProductos.addEventListener('click', (evento) => {
   // Si el clic no fue en el botón, entonces sí abrimos el detalle
   const tarjeta = evento.target.closest('.tarjeta');
   if (tarjeta) {
-    abrirModal(Number(tarjeta.dataset.id));
+    abrirModal(tarjeta.dataset.id);
   }
 });
 
@@ -493,7 +564,7 @@ gridProductos.addEventListener('click', (evento) => {
 itemsCarritoEl.addEventListener('click', (evento) => {
   const boton = evento.target.closest('button[data-accion]');
   if (!boton) return;
-  const id = Number(boton.dataset.id);
+  const id = boton.dataset.id;
   const accion = boton.dataset.accion;
   const fila = carrito.listar().find(f => f.zapato.id === id);
   if (!fila) return;
@@ -551,7 +622,7 @@ document.getElementById('cerrar-modal').addEventListener('click', () => (modal.h
 document.getElementById('modal-cuerpo').addEventListener('click', (evento) => {
   const boton = evento.target.closest('[data-accion="agregar"]');
   if (!boton) return;
-  const id = Number(boton.dataset.id);
+  const id = boton.dataset.id;
   const zapato = catalogo.find(z => z.id === id);
   if (carrito.agregar(zapato, 1)) {
     contadorClicsAgregar(); // función "creciente": suma un clic más
@@ -565,7 +636,7 @@ document.getElementById('modal-cuerpo').addEventListener('click', (evento) => {
 /* =========================================================================
    TEMPORIZADOR: mensajes rotativos del hero (setInterval)
    ========================================================================= */
-const mensajesHero = ['Precios comodos', 'Envío gratis', 'Elige tu favorito'];
+const mensajesHero = ['Precios cómodos', 'Envío gratis', 'Elige tu estilo'];
 let indiceMensaje = 0;
 setInterval(() => {
   indiceMensaje = (indiceMensaje + 1) % mensajesHero.length; // 2) operador módulo
